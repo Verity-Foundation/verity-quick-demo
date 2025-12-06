@@ -8,7 +8,7 @@ class DBError(Exception):
     pass
 
 class DB:
-    def __init__(self, path="trustmesh.db", index_path="trustmesh_index.db", max_dbs=2):
+    def __init__(self, path="store.db", index_path="index.db", max_dbs=2):
         self.cache = OrderedDict()
         self.cache_size = CACHESIZE
         self.db = tool.open(path, max_dbs=max_dbs)
