@@ -6,7 +6,7 @@ from db_lmdb import DB, DBError
 from fastapi import FastAPI
 from shared_model import DIDRegistryRegisterRequest, DIDRegistryRegisterResponse, DIDRegistryResolveResponse, Demo, IPFSStoreRequest, IPFSStoreResponse, IPFSRetrieveResponse
 from utils import *
-
+from config import *
 app = FastAPI()
 db = DB()
 
@@ -52,7 +52,7 @@ def retrieve_cid(cid:str):
             di = json.loads(f.read())
             return IPFSRetrieveResponse(cid=cid, document=di, exists=True)
     except FileNotFoundError:
-        return IPFSRetrieveResponse(cid=cid,document={"":""}, exists=False)
+        return IPFSRetrieveResponse(cid=cid,document={"0":""}, exists=False)
 
 def gen_ifps_hash(checksum):
     return "cid_"+checksum
@@ -61,6 +61,6 @@ def verify_signature(sig):
     pass
 
 if __name__ == "__main__":
-    a = Demo.model_dump()
-    store_cid(IPFSStoreRequest(document=a))
-    #uvicorn.run(app)
+    #a = Demo.model_dump()
+    #store_cid(IPFSStoreRequest(document=a))
+    uvicorn.run(app, port=PORT, host=HOST)
