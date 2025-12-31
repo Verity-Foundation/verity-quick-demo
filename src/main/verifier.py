@@ -145,6 +145,7 @@ async def verify_by_claim_id(claim_id: str):
     raise HTTPException(status_code=404, detail=f"Claim not found: {claim_id}")
 
 # HTML Interface
+## uses static instead
 @router.get("/", response_class=HTMLResponse)
 async def verification_interface():
     """Simple web interface for claim verification."""
@@ -227,7 +228,7 @@ async def verification_interface():
                     
                     let stepsHtml = '<h3>Verification Steps:</h3>';
                     for (const [step, success] of Object.entries(data.steps || {})) {
-                        const stepName = step.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
+                        const stepName = step.replace('_', ' ').replace(/\b\\w/g, l => l.toUpperCase());
                         stepsHtml += `<div class="step ${success ? 'success' : 'failure'}">${success ? '✓' : '✗'} ${stepName}</div>`;
                     }
                     

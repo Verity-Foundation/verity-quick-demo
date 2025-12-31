@@ -2,7 +2,6 @@ import os
 import mimetypes
 from datetime import datetime
 from typing import Any, Dict, Optional
-
 from utils import hexhash
 from claim_model import VerityClaim, ContentType
 from signer import sign
@@ -14,8 +13,13 @@ def _compute_content_hash_from_bytes(data: bytes) -> str:
     h = hexhash(data)
     return f"sha256:{h}"
 
-
-def create_claim_from_file(file_path: str, issuer_did: str, content_type: Optional[ContentType] = None) -> VerityClaim:
+def create_claim(issuer_did:str,message:str=None,file_path:str=None, content_type:Optional[ContentType]=None):
+    if message != None:
+        return _create_claim_from_message(message, issuer_did)
+    if file_path != None:
+        return _create_claim_from_file(file_path, issuer_did, content_type)
+    
+def _create_claim_from_file(file_path: str, issuer_did: str, content_type: Optional[ContentType] = None) -> VerityClaim:
     """Create a VerityClaim from a local file. Does NOT embed the file contents.
 
     The claim will include metadata about the file and a content hash only.
@@ -62,9 +66,9 @@ def create_claim_from_file(file_path: str, issuer_did: str, content_type: Option
     return claim
 
 
-def create_claim_from_message(message: str, issuer_did: str) -> VerityClaim:
+def _create_claim_from_message(message: str, issuer_did: str) -> VerityClaim:
     """Create a VerityClaim from a short text message. The message itself is stored in credential_subject.text."""
-    now = datetime.now()
+    now = datetime.now().isoformat()
     content_hash = _compute_content_hash_from_bytes(message.encode())
 
     claim = VerityClaim(
@@ -102,7 +106,7 @@ def sign_claim(claim: VerityClaim, priv_key_hex: str, verification_method: str) 
     return claim
 
 
-def store_claim(claim: VerityClaim, did_verify: bool = False):
+def store_claim(claim: VerityClaim):
     """Store claim via middleware.store and return the IPFS CID string from the response."""
     resp = store(claim)
     return resp.cid
@@ -125,27 +129,23 @@ def create_and_register_claim(file_path: str, issuer_did: str, issuer_private_ke
     from middleware import store, register
     
     # 1. Create claim from file
-    claim = create_claim_from_file(file_path, issuer_did)
+    claim = create_claim(file_path=file_path, issuer_did=issuer_did)
     
     # 2. Sign the claim
     if not verification_method:
         verification_method = f"{issuer_did}#key-1"
     signed_claim = sign_claim(claim, issuer_private_key, verification_method)
     
-    # 3. Store claim (IPFS mock)
-    storage_resp = store(signed_claim.model_dump())
-    claim_cid = storage_resp.cid
-    
+    # 3. Store claim (IPFS mock) and map claim to cid
+    cid = store_claim(signed_claim)
+    pin_claim(signed_claim.claim_id, cid)
     # 4. Generate verification URL
     verification_url = generate_verification_url(signed_claim, base_url)
     signed_claim.verification_url = verification_url
     
-    # 5. Update stored claim with verification URL
-    store(signed_claim.model_dump())
-    
     return {
         "claim_id": signed_claim.claim_id,
-        "cid": claim_cid,
+        "cid": cid,
         "verification_url": verification_url,
         "issuer": issuer_did,
         "signed_at": signed_claim.proof.get("created") if signed_claim.proof else None

@@ -14,7 +14,7 @@ app = FastAPI(
 # Setup verification routes and UI
 setup_verification_app(app)
 
-# Mount static files if needed
+# Mount static files
 # app.mount("/static", StaticFiles(directory="static"), name="static")
 
 @app.get("/")
@@ -29,7 +29,7 @@ async def health_check():
         "status": "healthy",
         "service": "verity-demo",
         "version": "1.0.0",
-        "endpoints": ["/verify", "/verify/cid/{cid}", "/verify/claim/{id}"]
+        "endpoints": ["/verify", "/verify/claim/{id}"]
     }
 
 if __name__ == "__main__":

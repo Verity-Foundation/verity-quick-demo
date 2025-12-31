@@ -1,5 +1,5 @@
 from signer import CreateNew, Address, Keys, verify
-from claim_utils import create_claim_from_message, sign_claim
+from claim_utils import create_claim, sign_claim
 from shared_model import DemoDIDDocument, VerificationMethod
 
 
@@ -17,7 +17,7 @@ def _extract_address_from_vm(vm: VerificationMethod) -> str:
 def test_claim_verification_success():
     issuer = "did:example:org-verify"
     # create a claim
-    claim = create_claim_from_message("Verify me", issuer)
+    claim = create_claim(message="Verify me",issuer_did=issuer)
 
     # create a new keypair to sign
     acct = CreateNew()
@@ -50,7 +50,7 @@ def test_claim_verification_success():
 
 def test_claim_verification_fails_with_wrong_key():
     issuer = "did:example:org-verify"
-    claim = create_claim_from_message("Do not verify me", issuer)
+    claim = create_claim(message="Do not verify me", issuer_did=issuer)
 
     # signer uses one keypair
     signer_acct = CreateNew()
@@ -72,7 +72,7 @@ def test_claim_verification_fails_with_wrong_key():
 
 def test_claim_verification_with_diff_keys():
     issuer = "did:example:org-verify"
-    claim = create_claim_from_message("Do not verify me", issuer)
+    claim = create_claim(message="Do not verify me", issuer_did=issuer)
 
     # signer uses one keypair
     signer_acct = CreateNew()

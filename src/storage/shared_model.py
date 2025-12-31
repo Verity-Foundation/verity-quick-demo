@@ -105,7 +105,6 @@ class DemoDIDDocument(BaseModel):
     created: datetime = Field(default_factory=datetime.now)
     updated: datetime = Field(default_factory=datetime.now)
     model_config = ConfigDict(
-        json_encoders={datetime: lambda v: v.isoformat()},
         use_enum_values=True
     )
     proof:Dict[str, Any] = Field(default_factory=dict)

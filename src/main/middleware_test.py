@@ -30,7 +30,7 @@ def test_register_success(monkeypatch):
         "timestamp": "2025-01-01T00:00:00"
     }
 
-    def fake_post(url, json, headers, timeout):
+    def fake_post(url, data, headers, timeout):
         return DummyResponse(expected)
 
     monkeypatch.setattr("middleware.requests.post", fake_post)
@@ -49,7 +49,7 @@ def test_store_and_retrieve_success(monkeypatch):
         "exists": True,
     }
 
-    def fake_post(url, json, headers, timeout):
+    def fake_post(url, data, headers, timeout):
         return DummyResponse(store_resp)
 
     def fake_get(url, timeout):

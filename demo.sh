@@ -109,7 +109,7 @@ echo -e "4. 🔍 Anyone verifies authenticity → ${GREEN}(Paste URL in web inte
 echo -e "5. ✅ Cryptographic verification completes → ${GREEN}(✅ VERIFIED badge appears)${NC}"
 
 echo -e "\n${BLUE}To test the verification:${NC}"
-echo -e "1. Open browser: ${GREEN}${VERIFIER_URL}{NC}"
+echo -e "1. Open browser: ${GREEN}${VERIFIER_URL}${NC}"
 echo -e "2. Paste a verification URL"
 echo -e "3. See real-time cryptographic verification"
 
