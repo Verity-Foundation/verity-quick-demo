@@ -9,8 +9,7 @@ from shared_model import DemoDIDDocument, VerificationMethod, ServiceEndpoint
 from pydantic import BaseModel
 import argparse
 from claim_utils import (
-    create_claim_from_file,
-    create_claim_from_message,
+    create_claim,
     pin_claim,
     sign_claim,
     store_claim,
@@ -117,8 +116,8 @@ class VerityDemoCLI:
                 self.state = MenuState.REGISTER_DIDDOC
             elif choice == "8":
                 self.state = MenuState.SAVE
-        elif choice == "0":
-            self.state = MenuState.EXIT
+            elif choice == "0":
+                self.state = MenuState.EXIT
         else:
             self.io.print("Invalid option. Please try again.")
     
@@ -187,7 +186,7 @@ class VerityDemoCLI:
         except ValueError:
             self.io.print("Please enter a valid number.")
     
-    def handle_create_diddoc(self):
+    def handle_create_diddoc(self): ## split into multiple components
         """Interactive DID Document creation with user input."""
         if not self.current_session:
             print("❌ No active session. Please select an account first.")
@@ -385,9 +384,9 @@ class VerityDemoCLI:
             if 'metadata' in doc:
                 self.io.print(f"   Org: {doc['metadata'].get('organizationName', 'Unknown')}")
     
-    def register_diddoc(self):
+    def register_diddoc(self): ## improve a bit
         self.list_diddocs()
-        self.io.print("Note: Only Signed diddocs are valid")
+        self.io.print("Note: Only diddocs that contains proofs(signed) are valid")
         i = int(self.io.input("~> "))
         try:
             doc = self.current_session.diddocs[i-1]
@@ -398,7 +397,7 @@ class VerityDemoCLI:
             self.io.print(f"Note: Error while registering DID Document {e}")
         self.state =MenuState.MAIN
 
-    def save_session_state(self, filename="verity_sessions.json"):
+    def save_session_state(self, filename="verity_sessions.json"): ## Improve it
         """Save sessions to file for persistence."""
         try:
             state = {
@@ -441,9 +440,9 @@ def main():
             sys.exit(2)
 
         if args.claim_file:
-            claim = create_claim_from_file(args.claim_file, args.issuer)
+            claim = create_claim(file_path=args.claim_file, issuer_did=args.issuer)
         else:
-            claim = create_claim_from_message(args.message, args.issuer)
+            claim = create_claim(message=args.message, issuer_did=args.issuer)
 
         print(f"Created claim id: {claim.claim_id}")
 
@@ -456,7 +455,6 @@ def main():
             cid = store_claim(claim)
             print(f"Stored claim; cid={cid}")
             res = pin_claim(claim.claim_id,cid)
-            print(res)
 
         # do not continue to interactive mode
         if args.no_interactive:

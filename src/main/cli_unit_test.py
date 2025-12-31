@@ -60,7 +60,7 @@ def test_main_headless_flow_calls_helpers(monkeypatch, capsys):
     # Prepare fake implementations and inject into cli module
     created = types.SimpleNamespace(claim_id="claim123")
 
-    def fake_create_from_message(msg, issuer):
+    def fake_create_from_message(message, issuer_did):
         return created
 
     def fake_sign_claim(claim, priv, vm):
@@ -69,10 +69,14 @@ def test_main_headless_flow_calls_helpers(monkeypatch, capsys):
 
     def fake_store_claim(claim):
         return "cid-abc"
+    
+    def fake_pin_claim(claim_id, cid):
+        return "success"
 
-    monkeypatch.setattr(cli, "create_claim_from_message", fake_create_from_message)
+    monkeypatch.setattr(cli, "create_claim", fake_create_from_message)
     monkeypatch.setattr(cli, "sign_claim", fake_sign_claim)
     monkeypatch.setattr(cli, "store_claim", fake_store_claim)
+    monkeypatch.setattr(cli, "pin_claim", fake_pin_claim)
 
     # set argv for headless run
     argv = ["prog", "--message", "hello", "--issuer", "did:ex:1", "--sign-priv", "0x01", "--verification-method", "did:ex:1#key-1", "--store", "--no-interactive"]
