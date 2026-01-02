@@ -2,7 +2,7 @@
 Claim pydantic models
 """
 from datetime import datetime
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any, List, cast
 from enum import Enum
 from pydantic import BaseModel, Field, ConfigDict
 from utils import hexhash
@@ -107,6 +107,8 @@ class VerityClaim(BaseModel):
 
     def generate_claim_id(self) -> str:
         """Helper to generate a unique ID based on content and issuer."""
-        data = f"{self.issuer['id']}{self.content_hash}{self.issuance_date.isoformat()}"
-
-        return f"claim_{hexhash(data.encode())[:16]}"
+        if isinstance(self.issuance_date, datetime):
+            date = cast(datetime, self.issuance_date)
+            data = f"{self.issuer['id']}{self.content_hash}{date.isoformat()}"
+            return f"claim_{hexhash(data.encode())[:16]}"
+        raise ValueError("issuance_date must be set to generate claim_id")

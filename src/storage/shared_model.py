@@ -14,7 +14,8 @@ class DIDRegistryRegisterRequest(BaseModel):
     did: str = Field(..., description="Full DID string (e.g., did:verity:demo:election-commission)")
     doc_cid: str = Field(..., description="IPFS CID of the DID Document")
     # Optional signature for demo purposes
-    signature: Optional[str] = Field(None, description="Signature of (did + doc_cid) by the DID's admin key")
+    signature: Optional[str] = Field(None, description="Signature"
+                                     "of (did + doc_cid) by the DID's admin key")
 
 class DIDRegistryRegisterResponse(BaseModel):
     """Response after registering a DID"""
@@ -66,7 +67,8 @@ class DIDResolveRequest(BaseModel):
     did: str
     # Optional flags for demo
     include_proof: bool = Field(default=False, description="Include resolution proof chain")
-    cache_override: bool = Field(default=False, description="Ignore cache and force fresh resolution")
+    cache_override: bool = Field(default=False, description="Ignore cache "
+                                 "and force fresh resolution")
 
 class DIDResolveResponse(BaseModel):
     """Complete resolution result"""
@@ -118,7 +120,7 @@ DEMO = DemoDIDDocument(
     verification_method=[VerificationMethod(id="did:verity:demo:election-commission#key-1",
                                             type="Ed25519VerificationKey2020",
                                             controller="did:verity:demo:election-commission",
-                                            public_key_multibase="z6MkqYqJ8Z4ZQZ4ZQZ4ZQZ4ZQZ4ZQZ4ZQZ4ZQZ4ZQZ4ZQZ4ZQZ4ZQZ4Z"),
+                                            public_key_multibase="z6MkqYqJ8Z4ZQZ4ZQZ4ZQZ4ZQZ4ZQZ4"),
                         ],
     authentication=["did:verity:demo:election-commission#key-1"],
     service = [ServiceEndpoint(id="did:verity:demo:election-commission#vcs",
@@ -141,7 +143,8 @@ class ExampleDID:
                     "id": "did:verity:demo:election-commission#key-1",
                     "type": "Ed25519VerificationKey2020",
                     "controller": "did:verity:demo:election-commission",
-                    "public_key_multibase": "z6MkqYqJ8Z4ZQZ4ZQZ4ZQZ4ZQZ4ZQZ4ZQZ4ZQZ4ZQZ4ZQZ4ZQZ4ZQZ4Z"
+                    "public_key_multibase":
+                    "z6MkqYqJ8Z4ZQZ4ZQZ4ZQZ4ZQZ4ZQZ4"
                 }
                 ],
                 "authentication": ["did:verity:demo:election-commission#key-1"],

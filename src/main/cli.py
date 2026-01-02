@@ -20,6 +20,10 @@ from claim_utils import (
     store_claim,
 )
 
+class CLIError(Exception):
+    """
+    Docstring for CLIError
+    """
 class MenuState(Enum):
     "Menu States specifies all state taken by the menu"
     MAIN = "main"
@@ -97,7 +101,10 @@ class VerityDemoCLI:
 
     def show_main_menu(self):
         """Display the main menu based on current session state."""
-        self.io.print(f"\n{' CURRENT SESSION: ' + self.current_session.address if self.current_session else ' No active session ':-^50}")
+        if self.current_session:
+            self.io.print(f"\n{' CURRENT SESSION: ' + self.current_session.address}")
+        else:
+            self.io.print(f"\n{' No active session ':-^50}")
         self.io.print("\nMAIN MENU:")
         print("1. Create new account")
         print("2. Select existing account")
@@ -156,12 +163,13 @@ class VerityDemoCLI:
             self.io.print("   Private key stored in session")
 
             # Ask if user wants to create a DIDDoc immediately
-            create_now = self.io.input("\nCreate a DID Document for this account now? (y/N): ").lower()
+            create_now = self.io.input("\nCreate a DID Document for " \
+            "this account now? (y/N): ").lower()
             if create_now == 'y':
                 self.state = MenuState.CREATE_DIDDOC
             else:
                 self.state = MenuState.MAIN
-        except Exception as e:
+        except CLIError as e:
             self.io.print(f"❌ Error creating account: {e}")
             self.state = MenuState.MAIN
 
@@ -215,8 +223,10 @@ class VerityDemoCLI:
         try:
             # Get basic DID information
             self.io.print("\n--- Basic Information ---")
-            did_namespace = self.io.input("Enter namespace (gov/org/media/edu/ind) [org]: ").strip() or "org"
-            did_entity = self.io.input("Enter entity identifier (e.g., 'election-commission'): ").strip()
+            did_namespace = self.io.input("Enter namespace "
+            "(gov/org/media/edu/ind) [org]: ").strip() or "org"
+            did_entity = self.io.input("Enter entity identifier "
+            "(e.g., 'election-commission'): ").strip()
             if not did_entity:
                 print("Entity identifier is required!")
                 return
@@ -230,7 +240,8 @@ class VerityDemoCLI:
             self.io.print(f"Default key ID: {vm_id}")
 
             # Get key type (with default)
-            vm_type = self.io.input("Key type [Ed25519VerificationKey2020]: ").strip() or "Ed25519VerificationKey2020"
+            vm_type = self.io.input("Key type "
+            "[Ed25519VerificationKey2020]: ").strip() or "Ed25519VerificationKey2020"
 
             # Create verification method using current account's address as the public key reference
             # In a real implementation, you'd use the actual public key
@@ -249,8 +260,10 @@ class VerityDemoCLI:
                 if add_service != 'y':
                     break
 
-                service_id = self.io.input("Service ID [vcs]: ").strip() or "vcs"
-                service_type = self.io.input("Service type [VerifiableCredentialService]: ").strip() or "VerifiableCredentialService"
+                service_id = self.io.input("Service ID "
+                "[vcs]: ").strip() or "vcs"
+                service_type = self.io.input("Service type [VerifiableCredentialService]: " \
+                "").strip() or "VerifiableCredentialService"
                 endpoint = self.io.input("Endpoint URL: ").strip()
 
                 if endpoint:
@@ -295,7 +308,7 @@ class VerityDemoCLI:
 
             self.state = MenuState.MAIN
 
-        except Exception as e:
+        except CLIError as e:
             self.io.print(f"\n❌ Error creating DID Document: {e}")
             traceback.print_exc()
             self.state = MenuState.MAIN
@@ -431,14 +444,24 @@ class VerityDemoCLI:
 def main():
     """Entry point for the CLI."""
     # support headless operation via env/args
-    parser = argparse.ArgumentParser(prog="verity-demo", description="Verity protocol demo CLI")
-    parser.add_argument("--claim-file", help="Create a claim from a file and print the claim id and optionally store it")
-    parser.add_argument("--message", help="Create a claim from a short message/text")
-    parser.add_argument("--issuer", help="Issuer DID to use when creating claim")
-    parser.add_argument("--sign-priv", help="Private key hex to sign the generated claim")
-    parser.add_argument("--verification-method", help="Verification method identifier to include in proof (e.g. did:...#key-1)")
-    parser.add_argument("--store", action="store_true", help="Store the generated (and optionally signed) claim via middleware")
-    parser.add_argument("--no-interactive", action="store_true", help="Do not start interactive mode")
+    parser = argparse.ArgumentParser(prog="verity-demo",
+                                     description="Verity protocol demo CLI")
+    parser.add_argument("--claim-file",
+                        help="Create a claim from a file and " \
+                        "print the claim id and optionally store it")
+    parser.add_argument("--message",
+                        help="Create a claim from a short message/text")
+    parser.add_argument("--issuer",
+                        help="Issuer DID to use when creating claim")
+    parser.add_argument("--sign-priv",
+                        help="Private key hex to sign the generated claim")
+    parser.add_argument("--verification-method",
+                        help="Verification method identifier"
+                        "to include in proof (e.g. did:...#key-1)")
+    parser.add_argument("--store", action="store_true",
+                        help="Store the generated (and optionally signed) claim via middleware")
+    parser.add_argument("--no-interactive", action="store_true",
+                        help="Do not start interactive mode")
 
     args = parser.parse_args()
 

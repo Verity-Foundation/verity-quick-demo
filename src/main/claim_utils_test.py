@@ -5,7 +5,7 @@ from claim_model import VerityClaim
 def test_create_claim_from_message():
     claim = create_claim(message="hello world", issuer_did="did:example:org1")
     assert isinstance(claim, VerityClaim)
-    assert "hello world" in claim.credential_subject.get("text")
+    assert "hello world" == claim.credential_subject.get("text")
     assert claim.content_hash.startswith("sha256:")
 
 

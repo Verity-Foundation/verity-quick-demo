@@ -2,6 +2,7 @@
 Utilities
 Those are small helpers used by other functions or methods
 """
+from typing import Union
 import uuid
 import hashlib
 
@@ -9,13 +10,13 @@ def newuuid() -> uuid.UUID:
     """Returns a new uuid"""
     return uuid.uuid4()
 
-def dighash(data:bytes) -> bytes:
+def dighash(data:Union[bytes,str]) -> bytes:
     """Hash data and return bytes"""
     if isinstance(data, str):
         data = data.encode()
     return hashlib.sha256(data).digest()
 
-def hexhash(data:bytes) -> str:
+def hexhash(data:Union[bytes,str]) -> str:
     """Hash data and return Hex"""
     if isinstance(data, str):
         data = data.encode()

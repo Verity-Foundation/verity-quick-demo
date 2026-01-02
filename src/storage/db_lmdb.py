@@ -2,6 +2,7 @@
 Wrapper around lmdb for storage(store + index)
 """
 from collections import OrderedDict
+from typing import Union
 import lmdb as tool
 from utils import dighash
 
@@ -39,7 +40,7 @@ class DB:
             self.cache.popitem(last=False)
         self.cache[key] = value
 
-    def get(self, key):
+    def get(self, key:Union[bytes,str]):
         """
         Retrieve the value using a key from db
         
@@ -48,7 +49,7 @@ class DB:
         """
         if not key:
             raise DBError("Key can't be empty")
-        key ,_=self._handler(key)
+        key ,_=self._encode_key_value(key)
         if key in self.cache:
             return self.cache[key]
         with self.db.begin(write=False) as txn:
@@ -60,7 +61,7 @@ class DB:
             self._cache_set(key, decoded)
             return decoded
 
-    def put(self, key, value):
+    def put(self, key:Union[bytes,str], value:Union[bytes,str]):
         """
         Stores a value into DB using specified key
         replaces a value if the key is already present
@@ -73,7 +74,7 @@ class DB:
             raise DBError("Key can't be empty")
         if not value:
             raise DBError("Value can't be empty")
-        key ,value=self._handler(key, value)
+        key ,value=self._encode_key_value(key, value)
         self._cache_set(key, value)
 
         hash_key = dighash(key)
@@ -85,12 +86,15 @@ class DB:
         except Exception as e:
             raise DBError(f"Can't insert item: {key}:{value}") from e
 
-    def _handler(self,key=None, value=None):
-        if key and isinstance(key, str):
-            key = key.encode()
-        if value and isinstance(value, str):
-            value = value.encode()
+    def _encode_key_value(self,key:Union[bytes,str], value:Union[bytes,str]=None):
+        if key is not None:
+            if isinstance(key, str):
+                key = key.encode()
+        if value is not None:
+            if isinstance(value, str):
+                value = value.encode()
         return key, value
+
     def iterate(self, prefix: str):
         """
         Iterate over all keys in the index database with a given prefix (e.g. 'ec:').
