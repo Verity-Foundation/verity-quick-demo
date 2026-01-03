@@ -41,8 +41,7 @@ check_service() {
 
 # Start Storage Service
 echo -e "\n${BLUE}1. Starting Storage Service...${NC}"
-cd "${DEMO_DIR}/src/storage" || exit
-python main.py &
+python start_storage.py &
 STORAGE_PID=$!
 sleep 3
 
@@ -55,8 +54,7 @@ fi
 
 # Start Verification Service
 echo -e "\n${BLUE}2. Starting Verification Service...${NC}"
-cd "${DEMO_DIR}/src/main" || exit
-python main.py &
+python start_verifier.py &
 VERIFIER_PID=$!
 sleep 3
 
@@ -67,31 +65,6 @@ else
     kill $STORAGE_PID 2>/dev/null
     exit 1
 fi
-
-# Create a demo organization and claim
-echo -e "\n${BLUE}3. Creating Demo Election Commission...${NC}"
-cd "${DEMO_DIR}/src/main" || exit
-
-# Create account and DID using CLI headless mode
-echo -e "${YELLOW}Creating organization identity...${NC}"
-python -c "
-import sys
-sys.path.append('.')
-from cli import main
-import argparse
-
-# Simulate CLI arguments for headless mode
-sys.argv = ['cli.py', '--message', 'Test claim', '--issuer', 'did:verity:gov:demo-election-comm', '--no-interactive']
-
-try:
-    main()
-except SystemExit:
-    pass
-"
-
-echo -e "\n${BLUE}4. Creating and Signing Election Results Claim...${NC}"
-echo -e "${YELLOW}This simulates the election commission publishing certified results...${NC}"
-
 
 echo -e "\n${GREEN}✅ Demo Setup Complete!${NC}"
 echo -e "========================================"

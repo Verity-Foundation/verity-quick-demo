@@ -1,9 +1,6 @@
-"""
-
-"""
 import pytest
-from middleware import MiddlewareError, health, register, resolve, retrieve, store
-from shared_model import DIDRegistryRegisterResponse, IPFSRetrieveResponse, IPFSStoreResponse
+from .middleware import MiddlewareError, health, register, resolve, retrieve, store
+from src.core.models import DIDRegistryRegisterResponse, IPFSRetrieveResponse, IPFSStoreResponse
 
 def test_register_success():
     if not _is_alive():

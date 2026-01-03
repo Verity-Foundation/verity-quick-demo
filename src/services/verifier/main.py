@@ -1,9 +1,11 @@
+"""
+Docstring for src.services.verifier.main
+"""
 import uvicorn
 from fastapi import FastAPI
-from fastapi.staticfiles import StaticFiles
 from fastapi.responses import RedirectResponse
-
-from verifier import setup_verification_app
+from src.core.constants import (ADDHOST, VERIFYPORT)
+from .verifier import setup_verification_app
 
 app = FastAPI(
     title="Verity Protocol Demo",
@@ -32,9 +34,12 @@ async def health_check():
         "endpoints": ["/verify", "/verify/claim/{id}"]
     }
 
-if __name__ == "__main__":
+def start():
+    """
+    Docstring for start
+    """
     uvicorn.run(
         app,
-        host="0.0.0.0",  # Accessible from other devices
-        port=8000,
+        host=ADDHOST,
+        port=VERIFYPORT
     )

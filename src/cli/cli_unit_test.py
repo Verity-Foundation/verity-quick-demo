@@ -4,7 +4,7 @@ CLI init test
 import sys
 import types
 from types import SimpleNamespace
-import cli
+from . import cli
 
 
 class FakeIO:
@@ -37,7 +37,7 @@ def test_sign_diddoc_attaches_proof(monkeypatch):
     app.current_session = session
 
     # attach a demo DID document (deep copy of the shared DEMO instance)
-    from shared_model import DEMO
+    from src.core.models import DEMO
     diddoc = DEMO.model_copy(deep=True)
     app.current_session.diddocs.append(diddoc)
 

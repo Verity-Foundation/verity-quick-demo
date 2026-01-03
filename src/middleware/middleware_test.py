@@ -1,8 +1,8 @@
 import pytest
 import requests
 
-from middleware import register, store, resolve, retrieve, MiddlewareError
-from shared_model import (
+from .middleware import register, store, resolve, retrieve, MiddlewareError
+from src.core.models import (
     DIDRegistryRegisterResponse,
     IPFSStoreResponse,
     IPFSRetrieveResponse,
@@ -33,7 +33,7 @@ def test_register_success(monkeypatch):
     def fake_post(url, data, headers, timeout):
         return DummyResponse(expected)
 
-    monkeypatch.setattr("middleware.requests.post", fake_post)
+    monkeypatch.setattr("src.middleware.requests.post", fake_post)
 
     resp = register("did:verity:demo:1", "cid123")
     assert isinstance(resp, DIDRegistryRegisterResponse)
@@ -55,8 +55,8 @@ def test_store_and_retrieve_success(monkeypatch):
     def fake_get(url, timeout):
         return DummyResponse(retrieve_resp)
 
-    monkeypatch.setattr("middleware.requests.post", fake_post)
-    monkeypatch.setattr("middleware.requests.get", fake_get)
+    monkeypatch.setattr("src.middleware.requests.post", fake_post)
+    monkeypatch.setattr("src.middleware.requests.get", fake_get)
 
     s = store({"foo": "bar"})
     assert isinstance(s, IPFSStoreResponse)
@@ -71,7 +71,7 @@ def test_resolve_failure_raises(monkeypatch):
     def fake_get(url, timeout):
         raise requests.RequestException("network")
 
-    monkeypatch.setattr("middleware.requests.get", fake_get)
+    monkeypatch.setattr("src.middleware.requests.get", fake_get)
 
     with pytest.raises(MiddlewareError):
         resolve("did:not:found")

@@ -5,11 +5,17 @@ import os
 import mimetypes
 from datetime import datetime
 from typing import Any, Dict, Optional
-from utils import hexhash
-from claim_model import VerityClaim, ContentType
-from signer import sign
-from middleware import register, store
+from src.core.models import VerityClaim, ContentType
+from src.core.crypto import hexhash, sign
+from .middleware import register, store
 
+class ClaimError(Exception):
+    """
+    ClaimError
+    
+    :var workflow: Description
+    :vartype workflow: Create
+    """
 
 def _compute_content_hash_from_bytes(data: bytes) -> str:
     """Wrapper around hexhash"""
@@ -17,13 +23,30 @@ def _compute_content_hash_from_bytes(data: bytes) -> str:
     h = hexhash(data)
     return f"sha256:{h}"
 
-def create_claim(issuer_did:str,message:str=None,file_path:str=None, content_type:Optional[ContentType]=None) -> VerityClaim:
+def create_claim(issuer_did:str,message:str=None,file_path:str=None,
+                 content_type:Optional[ContentType]=None) -> VerityClaim:
+    """
+    Create a claim based on provided data
+
+    :param issuer_did: Issuer DID
+    :type issuer_did: str
+    :param message: message to use for claim
+    :type message: str
+    :param file_path: path to file to use for claim
+    :type file_path: str
+    :param content_type: content type of file
+    :type content_type: Optional[ContentType]
+    :return: simple claim without proof
+    :rtype: VerityClaim
+    """
     if message is not None:
         return _create_claim_from_message(message, issuer_did)
     if file_path is not None:
         return _create_claim_from_file(file_path, issuer_did, content_type)
+    raise ClaimError("Claim data can't be empty")
 
-def _create_claim_from_file(file_path: str, issuer_did: str, content_type: Optional[ContentType] = None) -> VerityClaim:
+def _create_claim_from_file(file_path: str, issuer_did: str,
+                            content_type: Optional[ContentType] = None) -> VerityClaim:
     """Create a VerityClaim from a local file. Does NOT embed the file contents.
 
     The claim will include metadata about the file and a content hash only.
@@ -71,10 +94,11 @@ def _create_claim_from_file(file_path: str, issuer_did: str, content_type: Optio
 
 
 def _create_claim_from_message(message: str, issuer_did: str) -> VerityClaim:
-    """Create a VerityClaim from a short text message. The message itself is stored in credential_subject.text."""
+    """Create a VerityClaim from 
+    a short text message. 
+    The message itself is stored in credential_subject.text."""
     now = datetime.now().isoformat()
     content_hash = _compute_content_hash_from_bytes(message.encode())
-
     claim = VerityClaim(
         claim_id="tmp",
         context=["https://verity.foundation/contexts/claim/v1"],
@@ -118,7 +142,7 @@ def store_claim(claim: VerityClaim):
 def pin_claim(claim_id, cid):
     """map a claim id to cid """
     resp = register(claim_id, cid)
-    return True if resp.status == "success" else False
+    return resp.status == "success"
 
 def generate_verification_url(claim: VerityClaim, base_url: str = "http://localhost:8000") -> str:
     """Generate user-friendly verification URL for a claim."""
@@ -126,7 +150,9 @@ def generate_verification_url(claim: VerityClaim, base_url: str = "http://localh
     claim_id = claim.claim_id
     return f"{base_url}/verify/claim/{claim_id}"
 
-def create_and_register_claim(file_path: str, issuer_did: str, issuer_private_key: str, verification_method: str = None, base_url: str = "http://localhost:8000") -> Dict[str, Any]:
+def create_and_register_claim(file_path: str, issuer_did: str,
+                              issuer_private_key: str, verification_method: str = None,
+                              base_url: str = "http://localhost:8000") -> Dict[str, Any]:
     """
     Complete workflow: Create claim, sign it, store it, register DID, return verification URL.
     """

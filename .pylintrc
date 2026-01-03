@@ -1,0 +1,5 @@
+[MASTER]
+ignore-patterns = .*_test.py
+[TYPECHECK]
+# Add any type checking configurations here
+ignored-classes= pydantic.fields.FieldInfo

@@ -6,16 +6,15 @@ import time
 from typing import Optional, Union
 from pydantic import BaseModel
 import requests
-from config import HOST, PORT
-
-from shared_model import (
+from src.core.models import (
     DIDRegistryRegisterRequest,
     DIDRegistryRegisterResponse,
     DIDRegistryResolveResponse,
     IPFSStoreRequest,
     IPFSStoreResponse,
-    IPFSRetrieveResponse,
+    IPFSRetrieveResponse
 )
+from src.core.constants import HOST, STORAGEPORT
 
 logger = logging.getLogger(__name__)
 
@@ -44,14 +43,15 @@ def _finalize_url(key: str, val: Optional[str] = None) -> str:
         raise ValueError(f"Unknown endpoint key: {key}") from exc
 
     # HOST may include scheme, e.g. http://127.0.0.1
-    base = f"{HOST}:{PORT}"
+    base = f"{HOST}:{STORAGEPORT}"
     url = f"{base}{part}"
     if val:
         url = url + str(val)
     return url
 
 
-def _post_json(url: str, payload: dict, timeout: float = DEFAULT_TIMEOUT, retries: int = DEFAULT_RETRIES):
+def _post_json(url: str, payload: dict, timeout: float = DEFAULT_TIMEOUT,
+               retries: int = DEFAULT_RETRIES):
     headers = {"Content-Type": "application/json"}
     last_exc = None
     for attempt in range(1, retries + 1):
@@ -84,7 +84,8 @@ def _get_json(url: str, timeout: float = DEFAULT_TIMEOUT, retries: int = DEFAULT
     raise MiddlewareError(f"GET {url} failed after {retries} attempts: {last_exc}")
 
 
-def register(did: str, cid: str, signature: Optional[str] = None, timeout: float = DEFAULT_TIMEOUT) -> DIDRegistryRegisterResponse:
+def register(did: str, cid: str, signature: Optional[str] = None,
+              timeout: float = DEFAULT_TIMEOUT) -> DIDRegistryRegisterResponse:
     """Register a DID -> CID mapping on the registry service.
 
     Returns a `DIDRegistryRegisterResponse` on success or raises `MiddlewareError` on failure.
@@ -141,5 +142,5 @@ if __name__ == "__main__":
     try:
         DIDresp = register("did:dz", cid="dffe")
         print(DIDresp.model_dump())
-    except Exception as e:
+    except MiddlewareError as e:
         print("register failed:", e)
