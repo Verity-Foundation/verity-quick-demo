@@ -2,6 +2,9 @@
 Small utility to sign
 """
 import secrets
+from typing import Union
+import uuid
+import hashlib
 from eth_account import Account
 from eth_account.messages import encode_defunct
 
@@ -52,3 +55,31 @@ def verify(address, signa, msg):
     if recovered_address == address:
         return True ## Signature is valid
     return False ## Signature Invalid
+
+def newuuid() -> uuid.UUID:
+    """Returns a new uuid"""
+    return uuid.uuid4()
+
+def dighash(data:Union[bytes,str]) -> bytes:
+    """Hash data and return bytes"""
+    if isinstance(data, str):
+        data = data.encode()
+    return hashlib.sha256(data).digest()
+
+def hexhash(data:Union[bytes,str]) -> str:
+    """Hash data and return Hex"""
+    if isinstance(data, str):
+        data = data.encode()
+    return hashlib.sha256(data).hexdigest()
+
+def encode_id(escrow_id: int) -> str:
+    """Convert internal int ID to string for JSON/API."""
+    return str(escrow_id)
+
+def decode_id(raw: str | int) -> int:
+    """Convert external string/int back to internal int."""
+    if isinstance(raw, int):
+        return raw
+    if isinstance(raw, str):
+        return int(raw)
+    raise ValueError(f"Unsupported escrow_id type: {type(raw)}")

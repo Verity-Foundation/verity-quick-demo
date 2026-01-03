@@ -1,8 +1,7 @@
 """
 """
 import types
-
-from claim_utils import create_claim, sign_claim, store_claim
+from src.middleware.claim_utils import create_claim, sign_claim, store_claim
 
 
 def test_end_to_end_create_sign_store(monkeypatch):
@@ -14,7 +13,7 @@ def test_end_to_end_create_sign_store(monkeypatch):
     def fake_sign(priv, payload):
         return "sig-fake-123"
 
-    import claim_utils
+    import src.middleware.claim_utils as claim_utils
     monkeypatch.setattr(claim_utils, "sign", fake_sign)
     claim = sign_claim(claim, "0xdeadbeef", f"{issuer}#key-1")
 
@@ -25,7 +24,7 @@ def test_end_to_end_create_sign_store(monkeypatch):
         # assert that c is the claim (or dictlike)
         return fake_resp
 
-    import claim_utils
+    import src.middleware.claim_utils as claim_utils
     monkeypatch.setattr(claim_utils, "store", fake_store)
 
     cid = store_claim(claim)

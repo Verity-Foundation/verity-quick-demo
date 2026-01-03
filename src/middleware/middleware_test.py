@@ -1,8 +1,8 @@
 import pytest
 import requests
 
-from middleware import register, store, resolve, retrieve, MiddlewareError
-from shared_model import (
+from .middleware import register, store, resolve, retrieve, MiddlewareError
+from src.core.models import (
     DIDRegistryRegisterResponse,
     IPFSStoreResponse,
     IPFSRetrieveResponse,

@@ -4,7 +4,7 @@ Wrapper around lmdb for storage(store + index)
 from collections import OrderedDict
 from typing import Union
 import lmdb as tool
-from utils import dighash
+from src.core import dighash
 
 CACHESIZE = 30
 

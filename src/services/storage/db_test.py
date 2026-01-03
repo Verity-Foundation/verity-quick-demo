@@ -6,7 +6,7 @@ when used on other machines
 import os
 import tempfile
 import pytest
-from db_lmdb import DB, DBError
+from .db_lmdb import DB, DBError
 
 @pytest.fixture
 def temp_db():

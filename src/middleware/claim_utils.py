@@ -5,10 +5,9 @@ import os
 import mimetypes
 from datetime import datetime
 from typing import Any, Dict, Optional
-from utils import hexhash
-from claim_model import VerityClaim, ContentType
-from signer import sign
-from middleware import register, store
+from src.core.models import VerityClaim, ContentType
+from src.core.crypto import hexhash, sign
+from .middleware import register, store
 
 class ClaimError(Exception):
     """

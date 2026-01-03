@@ -5,13 +5,14 @@ import json
 import uvicorn
 from fastapi import FastAPI
 from fastapi.encoders import jsonable_encoder
-from db_lmdb import DB, DBError
-from utils import hexhash
-from shared_model import (DIDRegistryRegisterRequest, DIDRegistryRegisterResponse
+from src.core.models import (DIDRegistryRegisterRequest, DIDRegistryRegisterResponse
 , DIDRegistryResolveResponse,
 IPFSStoreRequest, IPFSStoreResponse, IPFSRetrieveResponse)
+from src.core.crypto import hexhash
+from src.core.constants import (STORAGEPORT, ADDHOST)
+from .db_lmdb import DB, DBError
 
-from config import HOST, PORT
+
 app = FastAPI()
 db = DB()
 
@@ -92,8 +93,8 @@ def retrieve_cid(cid:str):
 def _gen_ifps_hash(checksum):
     return "cid_"+checksum
 
-
-if __name__ == "__main__":
-    #a = DEMO.model_dump()
-    #store_cid(IPFSStoreRequest(document=a))
-    uvicorn.run(app, port=PORT, host=HOST)
+def start():
+    """
+    Docstring for start
+    """
+    uvicorn.run(app, port=STORAGEPORT, host=ADDHOST)

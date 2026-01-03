@@ -1,18 +1,22 @@
+"""
+Docstring for verifier
+"""
 from datetime import datetime
 import logging
 from typing import Dict, Optional
 from fastapi import FastAPI, HTTPException, APIRouter
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
-
-from middleware import retrieve, resolve
-from claim_model import VerityClaim
-from shared_model import DemoDIDDocument, VerificationMethod
-from signer import verify
+from src.middleware import retrieve, resolve
+from src.core.models import VerityClaim, DemoDIDDocument, VerificationMethod
+from src.core.crypto import verify
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
-
+class VerifierError(Exception):
+    """
+    Error related to verifier
+    """
 class VerificationResult(BaseModel):
     """Standardized verification result for API responses."""
     verified: bool
@@ -122,8 +126,8 @@ async def verify_claim_chain(claim_cid: str) -> VerificationResult:
         result.verified = True
         result.issuer["authorized_method"] = authorized_method
 
-    except Exception as e:
-        logger.exception(f"Verification failed for {claim_cid}")
+    except VerifierError as e:
+        logger.exception("Verification failed for %s", claim_cid)
         result.error_message = f"Verification error: {str(e)}"
     return result
 
@@ -138,7 +142,7 @@ async def verify_by_claim_id(claim_id: str):
             result = await verify_claim_chain(res.doc_cid)
             if result.steps["claim_retrieved"]:
                 return result
-        except Exception as exc:
+        except VerifierError as exc:
             raise HTTPException(status_code=500, detail=f"Internal error: {claim_id}") from exc
     elif claim_id.startswith("cid_"):
         return await verify_claim_chain(claim_id)
