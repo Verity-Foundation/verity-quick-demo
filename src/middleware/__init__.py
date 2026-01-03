@@ -2,7 +2,7 @@
 Bridge frontend to backend
 """
 
-from .middleware import register, store, resolve, health, retrieve
+from .middleware import register, store, resolve, health, retrieve, requests
 from .claim_utils import pin_claim, create_claim, sign_claim, store_claim
 
 __all__ = [
@@ -14,5 +14,6 @@ __all__ = [
     "pin_claim",
     "create_claim",
     "sign_claim",
-    "store_claim"
+    "store_claim",
+    "requests"
 ]
