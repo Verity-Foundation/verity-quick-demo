@@ -3,16 +3,29 @@ Docstring for verifier
 """
 from datetime import datetime
 import logging
-from typing import Dict, Optional
+from typing import Dict, Optional, TypedDict
 from fastapi import FastAPI, HTTPException, APIRouter
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 from src.middleware import retrieve, resolve
-from src.core.models import VerityClaim, DemoDIDDocument, VerificationMethod
+from src.core.models import (VerityClaim, DemoDIDDocument,
+VerificationMethod, IPFSRetrieveResponse,DIDRegistryResolveResponse)
 from src.core.crypto import verify
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
+
+class ResponseDict(TypedDict, total=False):
+    """Store all API responses"""
+    claim_resp:IPFSRetrieveResponse
+    did_resp:DIDRegistryResolveResponse
+    diddoc_resp:IPFSRetrieveResponse
+
+class TempDict(TypedDict, total=False):
+    """Store parsed models"""
+    claim_dict: dict
+    diddoc_dict: dict
+
 class VerifierError(Exception):
     """
     Error related to verifier
@@ -41,6 +54,9 @@ def _extract_address_from_vm(vm: VerificationMethod) -> Optional[str]:
         return pk[4:]
     return pk
 
+## valid in this case, we require details from previous requests
+## in other requests and each request is fairly unique
+# pylint: disable=too-many-return-statements
 async def verify_claim_chain(claim_cid: str) -> VerificationResult:
     """
     Core verification logic: Complete chain from claim CID to issuer validation.
@@ -51,16 +67,17 @@ async def verify_claim_chain(claim_cid: str) -> VerificationResult:
         issuer={},
         verification_time=datetime.now().isoformat()
     )
-
     try:
+        resq_dict:ResponseDict= {}
+        tmp_dict: TempDict = {}
         # Step 1: Retrieve the claim from storage
-        claim_resp = retrieve(claim_cid)
-        if not claim_resp.exists:
+        resq_dict['claim_resp'] = retrieve(claim_cid)
+        if not resq_dict['claim_resp'].exists:
             result.error_message = f"Claim not found: {claim_cid}"
             return result
 
-        claim_dict = claim_resp.document
-        claim = VerityClaim.model_validate(claim_dict)
+        tmp_dict['claim_dict'] = resq_dict['claim_resp'].document
+        claim = VerityClaim.model_validate(tmp_dict['claim_dict'])
         result.claim_id = claim.claim_id
         result.steps["claim_retrieved"] = True
 
@@ -73,21 +90,21 @@ async def verify_claim_chain(claim_cid: str) -> VerificationResult:
         result.issuer = {"did": issuer_did}
 
         # Step 3: Resolve DID to CID
-        did_resp = resolve(issuer_did)
-        if did_resp.status != "success" or not did_resp.doc_cid:
+        resq_dict['did_resp'] = resolve(issuer_did)
+        if resq_dict['did_resp'].status != "success" or not resq_dict['did_resp'].doc_cid:
             result.error_message = f"DID resolution failed: {issuer_did}"
             return result
 
         result.steps["did_resolved"] = True
 
         # Step 4: Retrieve DID Document
-        diddoc_resp = retrieve(did_resp.doc_cid)
+        diddoc_resp = retrieve(resq_dict['did_resp'].doc_cid)
         if not diddoc_resp.exists:
-            result.error_message = f"DID Document not found: {did_resp.doc_cid}"
+            result.error_message = f"DID Document not found: {resq_dict['did_resp'].doc_cid}"
             return result
 
-        diddoc_dict = diddoc_resp.document
-        diddoc = DemoDIDDocument.model_validate(diddoc_dict)
+        tmp_dict['diddoc_dict'] = diddoc_resp.document
+        diddoc = DemoDIDDocument.model_validate(tmp_dict['diddoc_dict'])
         result.steps["diddoc_retrieved"] = True
 
         # Extract issuer metadata
@@ -102,9 +119,7 @@ async def verify_claim_chain(claim_cid: str) -> VerificationResult:
         signature = claim.proof["proofValue"]
         # Recreate the exact payload that was signed
         # Remove proof for verification since it wasn't part of signed payload
-        claim.proof =None
-        claim.verification_url = None
-        message_to_verify = claim.model_dump_json()
+        message_to_verify = claim.model_dump_json(exclude={'proof', 'verification_url'})
 
         # Step 6: Check all verification methods in DID Document
         signature_valid = False
@@ -125,7 +140,6 @@ async def verify_claim_chain(claim_cid: str) -> VerificationResult:
         result.steps["issuer_authorized"] = True
         result.verified = True
         result.issuer["authorized_method"] = authorized_method
-
     except VerifierError as e:
         logger.exception("Verification failed for %s", claim_cid)
         result.error_message = f"Verification error: {str(e)}"
