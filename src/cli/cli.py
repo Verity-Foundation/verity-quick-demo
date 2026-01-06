@@ -30,6 +30,7 @@ class MenuState(Enum):
     SAVE = "save_session"
     EXIT = "exit"
     LISTDID = "list_did"
+    PRIVKEY= "priv_key"
 
 class AccountSession:
     """Manages a single account session with its keys and state."""
@@ -100,6 +101,7 @@ class VerityDemoCLI:
             MenuState.REGISTER_DIDDOC:self.register_diddoc,
             MenuState.SAVE:self.save_session_state,
             MenuState.LISTDID:self.list_diddocs,
+            MenuState.PRIVKEY:self.export_priv_key,
             }
         while self.state != MenuState.EXIT:
             state[self.state]()
@@ -123,6 +125,7 @@ class VerityDemoCLI:
             print("6. List my DID Documents")
             print("7. Register DID Document")
             print("8. Save Session")
+            print("9. Export Private Key")
 
         print("0. Exit")
 
@@ -136,6 +139,7 @@ class VerityDemoCLI:
             "6":MenuState.LISTDID,
             "7":MenuState.REGISTER_DIDDOC,
             "8":MenuState.SAVE,
+            "9":MenuState.PRIVKEY,
             "0":MenuState.EXIT
             }
         try:
@@ -443,6 +447,18 @@ class VerityDemoCLI:
             self.io.print(f"Note: Could not save session state: {e}")
         self.state =MenuState.MAIN
 
+    def export_priv_key(self):
+        """Exports Priv key account to screen"""
+        i = 1
+        states = []
+        for add in self.sessions:
+            self.io.print(f"{i} - {add}")
+            i = i+1
+            states.append(add)
+        inp = int(self.io.input("~> "))
+        self.io.print(f"Private Key: {self.sessions[states[inp-1]].private_key.hex()}")
+        self.state =MenuState.MAIN
+        
 def main():
     """Entry point for the CLI."""
     # support headless operation via env/args
