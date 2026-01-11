@@ -11,17 +11,17 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 import uvicorn
-
 from src.backend import VerityDemo
 from src.core.models import (
     DemoDIDDocument,
     VerificationMethod,
 )
-from src.core.exceptions import VerityBackendError, VerityCliError, VerityError
+from src.core.exceptions import (VerityError, VerityValidationError)
 
 app = FastAPI(
     title="DID Management System",
-    description="Verity Protocol - DID Document and Claim Management"
+    description="Verity Protocol - DID Document and Claim Management",
+    debug=True
 )
 
 # Mount static files and templates (if available)
@@ -79,8 +79,6 @@ async def api_create_account():
                 "message": "Account created successfully"
             }
         )
-    except VerityCliError as e:
-        raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
 
@@ -113,7 +111,7 @@ async def api_select_account(account_id: str = Form(...)):
         try:
             result = backend.select_account(account_id)
             #result = backend.select_account_by_index(idx)
-        except ValueError as exc:
+        except (VerityValidationError, ValueError) as exc:
             # If not an integer, treat as address lookup
             addresses, _ = backend.list_account()
             if account_id in addresses:
@@ -133,7 +131,7 @@ async def api_select_account(account_id: str = Form(...)):
         raise HTTPException(status_code=400, detail="Failed to select account")
     except HTTPException:
         raise
-    except VerityCliError as e:
+    except VerityValidationError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
@@ -160,18 +158,12 @@ async def api_create_diddoc(
     try:
         # Ensure an active session: attempt to select the provided account
         # account_id may already be selected by the UI, but ensure it.
-        try:
-            # try numeric index
-            idx = int(account_id)
-            backend.select_account_by_index(idx)
-        except VerityBackendError as e:
-            res = await api_select_account(account_id)
-            data = json.loads(res.body)
-            if data['status'] != "success":
-                raise HTTPException(status_code=400, detail="Bad req") from e
-            if data['current_account'] == account_id:
-                raise HTTPException(status_code=400, detail="Bad req") from e
-
+        res = await api_select_account(account_id)
+        data = json.loads(res.body)
+        if data['status'] != "success":
+            raise HTTPException(status_code=401, detail="Bad req")
+        if data['current_account'] != account_id:
+            raise HTTPException(status_code=401, detail="Bad req")
         active, addr = backend.is_active()
         if not active:
             raise HTTPException(status_code=400, detail="No active session after selecting account")
@@ -216,10 +208,12 @@ async def api_create_diddoc(
         )
 
         # Call backend.add_diddoc with proper BaseModel instance
-        backend.add_diddoc(diddoc)
-
+        res = backend.add_diddoc(diddoc)
         # If backend.add_diddoc returns success, normalize for response
-        response_payload = {"status": "created", "did": did}
+        if res:
+            response_payload = {"status": "created", "did": did}
+        else:
+            response_payload = {"status": "not created", "did": did}
         # Serialize the DemoDIDDocument to dict for JSON response
         try:
             response_payload["diddoc"] = diddoc.model_dump()
@@ -240,20 +234,17 @@ async def api_create_diddoc(
                 response_payload["signed"] = False
                 response_payload.setdefault("notes", []).append(f"signing failed: {str(e)}")
 
-        # Register after create (placeholder)
+        # Register after create
         if register_after_create == "1":
-            # Backend may not implement remote registration; do placeholder
-            # Mirror CLI behavior by returning a placeholder success message
-            response_payload["registered"] = True
-            response_payload.setdefault("notes", []).append("Registration performed " \
-            "by UI placeholder. Implement backend API to register DID.")
-
+            res = backend.register_diddoc(-1) # -1 represent the recently created diddoc
+            if res:
+                response_payload["registered"] = True
+            else:
+                response_payload["registered"] = False
         return response_payload
-
     except HTTPException:
         raise
     except Exception as e:
-        # Return error details for debugging
         raise HTTPException(status_code=500, detail=f"Failed to create DID Document: {e}") from e
 
 @app.get("/api/diddoc/list")
@@ -272,11 +263,7 @@ async def api_list_diddocs():
         serialized_docs = []
         if diddocs:
             for doc in diddocs:
-                try:
-                    serialized_docs.append(doc.model_dump())
-                except VerityError:
-                    serialized_docs.append(str(doc))
-
+                serialized_docs.append(doc)
         return JSONResponse(
             status_code=200,
             content={
@@ -286,8 +273,6 @@ async def api_list_diddocs():
         )
     except HTTPException:
         raise
-    except VerityCliError as e:
-        raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
 
@@ -311,7 +296,6 @@ async def api_sign_diddoc(diddoc_index: int = Form(...)):
 
         # Sign it using backend method (same as CLI)
         result = backend.sign_diddoc(diddoc)
-        print(result)
         if result:
             return JSONResponse(
                 status_code=200,
@@ -324,7 +308,38 @@ async def api_sign_diddoc(diddoc_index: int = Form(...)):
         raise HTTPException(status_code=400, detail="Failed to sign DID Document")
     except HTTPException:
         raise
-    except VerityCliError as e:
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
+@app.post("/api/diddoc/register")
+async def api_register_diddoc(diddoc_index: int = Form(...)):
+    """
+    Register a DID Document at the given index with the current account's private key.
+    Follows the pattern from CLI's sign_diddoc()
+    """
+    try:
+        active, _ = backend.is_active()
+        if not active:
+            raise HTTPException(status_code=400, detail="No active session")
+
+        # Get the DID document
+        diddocs = backend.list_sessions_diddocs()
+        if not diddocs or diddoc_index < 0 or diddoc_index >= len(diddocs):
+            raise HTTPException(status_code=400, detail="Invalid DID Document index")
+        # register it using backend method (same as CLI)
+        result = backend.register_diddoc(diddoc_index)
+        if result:
+            return JSONResponse(
+                status_code=200,
+                content={
+                    "status": "success",
+                    "message": "DID Document registered successfully",
+                }
+            )
+        raise HTTPException(status_code=400, detail="Failed to register DID Document")
+    except HTTPException:
+        raise
+    except VerityValidationError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
@@ -349,7 +364,7 @@ async def api_list_issuers():
         )
     except HTTPException:
         raise
-    except VerityCliError as e:
+    except VerityValidationError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
@@ -403,7 +418,7 @@ async def api_create_claim(
         )
     except HTTPException:
         raise
-    except VerityCliError as e:
+    except VerityValidationError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
@@ -435,7 +450,7 @@ async def api_sign_data(message: str = Form(...)):
         )
     except HTTPException:
         raise
-    except VerityCliError as e:
+    except VerityValidationError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
@@ -463,8 +478,6 @@ async def api_verify_data(
         )
     except HTTPException:
         raise
-    except VerityCliError as e:
-        raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
 
@@ -494,7 +507,7 @@ async def api_export_private_key():
         )
     except HTTPException:
         raise
-    except VerityCliError as e:
+    except VerityValidationError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
