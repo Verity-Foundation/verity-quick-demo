@@ -399,6 +399,9 @@ async function loadDidDocs() {
                     <button class="btn-secondary" onclick="signDidDoc(${index})">
                         <i class="fas fa-pen"></i> Sign Document
                     </button>
+                    <button class="btn-secondary" onclick="registerDidDoc(${index})">
+                        <i class="fas fa-pen"></i> Register Document
+                    </button>
                     <pre style="background: #f1f1f1; padding: 10px; border-radius: 5px; overflow-x: auto; margin-top: 10px;">
 ${JSON.stringify(doc, null, 2)}
                     </pre>
@@ -418,6 +421,30 @@ ${JSON.stringify(doc, null, 2)}
             </div>
         `;
         showToast(`Error loading DID Documents: ${error.message}`, 'error');
+    }
+}
+
+// Register DID Document
+async function registerDidDoc(index) {
+    const resultDiv = document.getElementById('didDocsList');
+    
+    try {
+        const formData = new FormData();
+        formData.append('diddoc_index', index);
+        
+        const response = await fetch('/api/diddoc/register', {
+            method: 'POST',
+            body: formData
+        });
+        
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        
+        const data = await response.json();
+        
+        showToast('DID Document registered successfully', 'success');
+        await loadDidDocs(); // Reload to show updated document
+    } catch (error) {
+        showToast(`Error registering DID Document: ${error.message}`, 'error');
     }
 }
 
@@ -559,77 +586,6 @@ function toggleClaimInput() {
     }
 }
 
-// Create Claim
-/*async function createClaim() {
-    const accountId = document.getElementById('claimAccountId').value;
-    const issuer = document.getElementById('claimIssuer').value;
-    const claimType = document.querySelector('input[name="claimType"]:checked').value;
-    const resultDiv = document.getElementById('claimResult');
-    
-    if (!accountId || !issuer) {
-        showToast('Please select account and issuer', 'error');
-        return;
-    }
-    
-    try {
-        const formData = new FormData();
-        formData.append('issuer', issuer);
-        
-        if (claimType === 'message') {
-            const message = document.getElementById('claimMessage').value.trim();
-            if (!message) {
-                showToast('Please enter a message', 'error');
-                return;
-            }
-            formData.append('message', message);
-        } else {
-            const fileInput = document.getElementById('claimFile');
-            if (!fileInput.files || fileInput.files.length === 0) {
-                showToast('Please select a file', 'error');
-                return;
-            }
-            formData.append('file', fileInput.files[0]);
-        }
-        
-        const response = await fetch('/api/claims/create', {
-            method: 'POST',
-            body: formData
-        });
-        
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        
-        const data = await response.json();
-        
-        resultDiv.innerHTML = `
-            <div class="result-item">
-                <h4><i class="fas fa-check-circle"></i> Claim Created Successfully</h4>
-                <div style="background: #d4edda; color: #155724; padding: 15px; border-radius: 8px; margin: 15px 0;">
-                    <p><strong>Claim ID:</strong> <code>${data.claim_id}</code></p>
-                    <p><strong>Issuer:</strong> ${issuer}</p>
-                    <p><strong>Status:</strong> Created & Signed</p>
-                </div>
-                <pre style="background: #f1f1f1; padding: 10px; border-radius: 5px; overflow-x: auto;">
-${JSON.stringify(data.claim, null, 2)}
-                </pre>
-            </div>
-        `;
-        
-        showToast('Claim created and signed successfully', 'success');
-        
-        // Clear form
-        document.getElementById('claimMessage').value = '';
-        document.getElementById('claimFile').value = '';
-    } catch (error) {
-        resultDiv.innerHTML = `
-            <div class="result-item" style="border-left-color: #f44336;">
-                <h4><i class="fas fa-exclamation-circle"></i> Error</h4>
-                <p>${error.message}</p>
-            </div>
-        `;
-        showToast(`Error creating claim: ${error.message}`, 'error');
-    }
-}*/
-
 // Utility function to copy to clipboard
 function copyToClipboard(text) {
     navigator.clipboard.writeText(text).then(() => {
@@ -671,64 +627,6 @@ function updateAccountDropdown() {
     opt.textContent = showFullAddresses ? addr : `${addr.substring(0,10)}...`;
     select.appendChild(opt);
   });
-}
-
-// Create DID doc with additional fields and VMs
-async function createDidDoc() {
-  const org = document.getElementById('didOrgName').value.trim();
-  const ns = document.getElementById('didNamespace').value.trim() || 'org';
-  let entity = document.getElementById('didEntityId').value.trim();
-  if (!entity) entity = org.toLowerCase().replace(/\s+/g, '-');
-  const jurisdiction = document.getElementById('didJurisdiction').value || 'US';
-  const tier = document.getElementById('didTier').value || 'S';
-  const account = document.getElementById('didAccountId').value;
-  const signAfter = document.getElementById('signAfterCreate').checked;
-  const registerAfter = document.getElementById('registerAfterCreate').checked;
-
-  if (!org || !account) { showToast('Organization and account required','error'); return; }
-
-  // Collect verification methods from UI
-  const vms = [];
-  document.querySelectorAll('#verificationMethods .vm-row').forEach(row => {
-    const id = row.querySelector('.vm-id').value.trim();
-    const type = row.querySelector('.vm-type').value;
-    const controller = row.querySelector('.vm-controller').value.trim();
-    const pub = row.querySelector('.vm-public').value.trim();
-    if (pub) {
-      vms.push({
-        id: id || undefined,
-        type,
-        controller: controller || undefined,
-        public_key: pub
-      });
-    }
-  });
-
-  const form = new FormData();
-  form.append('organization_name', org);
-  form.append('namespace', ns);
-  form.append('entity_identifier', entity);
-  form.append('jurisdiction', jurisdiction);
-  form.append('tier', tier);
-  form.append('account_id', account);
-  form.append('sign_after_create', signAfter ? '1' : '0');
-  form.append('register_after_create', registerAfter ? '1' : '0');
-  form.append('verification_methods', JSON.stringify(vms));
-
-  try {
-    const res = await fetch('/api/diddoc/create', { method: 'POST', body: form });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const data = await res.json();
-    document.getElementById('didDocResult').innerText = JSON.stringify(data, null, 2);
-    showToast('DID Document created', 'success');
-
-    // if backend returned actions performed, show them
-    // reload DID docs list
-    await loadDidDocs();
-  } catch (err) {
-    showToast('Error creating DIDDOC: ' + err.message, 'error');
-    document.getElementById('didDocResult').innerText = err.message;
-  }
 }
 
 // Create claim extended: allow sign + register flags

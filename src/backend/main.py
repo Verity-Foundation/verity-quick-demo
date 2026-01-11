@@ -11,7 +11,7 @@ from src.core import (sign_message, verify_signature,
                       create_ethereum_account, get_ethereum_address, get_ethereum_private_key)
 from src.core.models import DemoDIDDocument
 from src.core.io import ConsoleIO
-from src.core.exceptions import VerityBackendError
+from src.core.exceptions import VerityBackendError, VerityValidationError
 from src.middleware import (
     create_claim,
     pin_claim,
@@ -39,8 +39,7 @@ class AccountSession:
         Args:
             diddoc: DID document to set as current.
         """
-        if diddoc is None:
-            return
+        self.is_valid(diddoc)
         self.current_diddoc = diddoc
 
     def add_diddoc(self, diddoc: BaseModel):
@@ -50,11 +49,17 @@ class AccountSession:
         Args:
             diddoc: DID document to add.
         """
-        if diddoc is None:
-            return
+        self.is_valid(diddoc)
         self.diddocs.append(diddoc)
         self.set_current_diddoc(diddoc)
 
+    def is_valid(self, diddoc:BaseModel):
+        """Ensure diddoc is valid
+        Raises Error in otherwise"""
+        if diddoc is None:
+            raise VerityBackendError("diddoc can not be None")
+        if not isinstance(diddoc, BaseModel):
+            raise VerityBackendError("diddoc must of Type: BaseModel")
 class VerityDemo:
     """Main backend service with session and DID document management."""
     def __init__(self, io: Optional[ConsoleIO] = None):
@@ -63,6 +68,16 @@ class VerityDemo:
         setup_logging()
         self.sessions: Dict[str, AccountSession] = {}  # address -> session
         self.current_session: Optional[AccountSession] = None
+
+    def is_data_valid(self, data, name:str=""):
+        """
+        Checks whether provided input it None or empty then raise
+        
+        """
+        if not data:
+            raise VerityValidationError(f"{name} cannot be empty")
+        if data is None:
+            raise VerityValidationError(f"{name} must not be None")
 
     def is_active(self):
         """
@@ -107,7 +122,7 @@ class VerityDemo:
             return None
         addresses = list(self.sessions.keys())
         diddoc = {}
-        for _, addr in enumerate(addresses):
+        for addr in addresses:
             if self.sessions[addr].diddocs:
                 diddoc[addr] = {len(self.sessions[addr].diddocs)}
         return (addresses, diddoc)
@@ -122,6 +137,10 @@ class VerityDemo:
         Returns:
             True if successful, False otherwise.
         """
+        if idx is None:
+            raise VerityValidationError("idx can't be None")
+        if not isinstance(idx, int):
+            raise VerityValidationError("idx must be an integer")
         try:
             addresses = list(self.sessions.keys())
             self.current_session = self.sessions[addresses[idx - 1]]
@@ -129,6 +148,8 @@ class VerityDemo:
         except (IndexError, KeyError) as e:
             logging.log(logging.WARNING, "Invalid selection: %s", e)
             return False
+        except Exception as e:
+            raise VerityBackendError("error occured during account selection") from e
 
     def select_account(self, address: str) -> bool:
         """
@@ -140,12 +161,15 @@ class VerityDemo:
         Returns:
             True if successful, False otherwise.
         """
+        self.is_data_valid(address, "address")
         try:
             self.current_session = self.sessions[address]
             return True
         except KeyError as e:
             logging.log(logging.WARNING, "Invalid selection: %s", e)
             return False
+        except Exception as e:
+            raise VerityBackendError("error occured during account selection") from e
 
     def add_diddoc(self, diddoc: DemoDIDDocument) -> bool:
         """
@@ -157,11 +181,16 @@ class VerityDemo:
         Returns:
             True if successful, False otherwise.
         """
+        self.is_data_valid(diddoc, "diddoc")
+        if not isinstance(diddoc, DemoDIDDocument):
+            raise VerityValidationError("diddoc must be of type DemoDIDDocument")
         try:
             self.current_session.add_diddoc(diddoc)
             return True
         except (AttributeError, VerityBackendError):
-            return False
+            raise
+        except Exception as e:
+            raise VerityBackendError("Error while adding diddoc") from e
 
     def sign_diddoc(self, diddoc: BaseModel) -> bool:
         """
@@ -173,6 +202,7 @@ class VerityDemo:
         Returns:
             True on success, False otherwise.
         """
+        self.is_data_valid(diddoc, "diddoc")
         try:
             # Serialize the DID Document for signing
             message = diddoc.model_dump_json()
@@ -188,6 +218,8 @@ class VerityDemo:
         except (AttributeError, VerityBackendError) as e:
             logging.log(logging.WARNING, "Error signing: %s", e)
             return False
+        except Exception as e:
+            raise VerityBackendError("Error Signing") from e
 
     def sign_data(self, message: str) -> Optional[str]:
         """
@@ -199,6 +231,7 @@ class VerityDemo:
         Returns:
             JSON string with signature details, or None if error.
         """
+        self.is_data_valid(message, "message")
         try:
             signature = sign_message(self.current_session.private_key, message)
             return json.dumps(
@@ -213,6 +246,8 @@ class VerityDemo:
         except (AttributeError, VerityBackendError) as e:
             logging.log(logging.WARNING, "Error signing: %s",e)
             return None
+        except Exception as e:
+            raise VerityBackendError("Error Signing") from e
 
     def verify_data(
         self, signer_address: str, signature: str, message: str
@@ -232,9 +267,9 @@ class VerityDemo:
             if not all([signer_address, signature, message]):
                 return False
             return verify_signature(signer_address, signature, message)
-        except VerityBackendError as e:
+        except Exception as e:
             logging.log(logging.WARNING, "Error during verification: %s", e)
-            return False
+            raise VerityBackendError("Error Signing") from e
 
     def curr_account(self) -> str:
         """
@@ -254,22 +289,26 @@ class VerityDemo:
         Returns:
             List of formatted DID document strings, or None if no session.
         """
-        if not self.current_session or not self.current_session.diddocs:
-            return None
-        result = []
-        for i, docs in enumerate(self.current_session.diddocs, 1):
-            doc = docs.model_dump()
-            has_proof = (
+        val, _ = self.is_active()
+        if val:
+            print(self.current_session.diddocs)
+            if len(self.current_session.diddocs) == 0:
+                return None
+            result = []
+            for i, docs in enumerate(self.current_session.diddocs, 1):
+                doc = docs.model_dump()
+                has_proof = (
                 "✓ Signed" if doc.get("proof", {}).get("proofValue") else "✗ Unsigned"
-            )
-            if "metadata" in doc:
-                result.append(
+                )
+                if "metadata" in doc:
+                    result.append(
                     f"{i}. {doc['id']} - {has_proof} "
                     f"Org: {doc['metadata'].get('organizationName', 'Unknown')}"
-                )
-            else:
-                result.append(f"{i}. {doc['id']} - {has_proof}")
-        return result
+                    )
+                else:
+                    result.append(f"{i}. {doc['id']} - {has_proof}")
+            return result
+        return None
 
     def register_diddoc(self, idx: int) -> bool:
         """
@@ -281,8 +320,12 @@ class VerityDemo:
         Returns:
             True if successful, False otherwise.
         """
+        if idx is None:
+            raise VerityValidationError("idx can't be None")
+        if not isinstance(idx, int):
+            raise VerityValidationError("idx must be an integer")
         try:
-            doc = self.current_session.diddocs[idx - 1]
+            doc = self.current_session.diddocs[idx]
             res = store(doc, 5)
             register(doc.id, res.cid)
             logging.log(logging.INFO, "DID registered successfully")
@@ -290,6 +333,9 @@ class VerityDemo:
         except (IndexError, VerityBackendError) as e:
             logging.log(logging.ERROR, "Error registering DID Document: %s",e)
             return False
+        except Exception as e:
+            logging.log(logging.ERROR, "Error registering DID Document: %s",e)
+            raise VerityBackendError("Error registering DID Document") from e
 
     def save_session_state(self, filename: str = "verity_sessions.json") -> None:
         """
@@ -327,7 +373,7 @@ class VerityDemo:
             Private key as hex string.
         """
         if not self.current_session:
-            raise VerityBackendError("No active session")
+            raise VerityValidationError("No active session")
         return self.current_session.private_key.hex()
 
     def create_claims(
@@ -342,18 +388,24 @@ class VerityDemo:
             filepath: Path to file to claim (optional).
 
         Returns:
-            Dict with claim details or None if error.
+            Dict with claim details or raise error.
         """
         try:
             if message:
+                self.is_data_valid(message, "message")
                 claim_obj = create_claim(issuer, message=message)
             else:
+                self.is_data_valid(filepath, "filepath")
                 claim_obj = create_claim(issuer, file_path=filepath)
-            signed_claim = sign_claim(claim_obj, self.current_session.private_key)
+
+            signed_claim = sign_claim(claim_obj, self.export_priv_key())
+
             claim_cid = store_claim(signed_claim)
             pin_claim(signed_claim.claim_id, claim_cid)
+
             verification_url = generate_verification_url(signed_claim)
             signed_claim.verification_url = verification_url
+
             return {
                 "claim_id": signed_claim.claim_id,
                 "cid": claim_cid,
@@ -366,9 +418,11 @@ class VerityDemo:
                 ),
                 "signed_claim": signed_claim.model_dump() if signed_claim else None
             }
-        except VerityBackendError as e:
+        except VerityValidationError as e:
             logging.log(logging.ERROR, "Error creating claims: %s", e)
-            return None
+            raise
+        except Exception as e:
+            raise VerityBackendError("Error while creating claim") from e
 
     def list_diddocs_all(self) -> List[BaseModel]:
         """
@@ -390,21 +444,24 @@ class VerityDemo:
         Returns:
             List of all DID sessions documents
         """
-        address = self.current_session.address
-        session_docs: List[BaseModel] = []
-        diddocs = self.list_diddocs_all()
-        for docs in diddocs:
-            doc = docs.model_dump()
 
-            for vm in doc.get("verification_method", []):
-                public_address = vm.get("public_key_multibase")
-                if public_address.startswith("eth:"):
-                    if public_address == f"eth:{address}":
-                        session_docs.append(docs)
-                else:
-                    if public_address == address:
-                        session_docs.append(docs)
-        return session_docs
+        val, address = self.is_active()
+        if val:
+            session_docs: List[BaseModel] = []
+            diddocs = self.list_diddocs_all()
+            for docs in diddocs:
+                doc = docs.model_dump()
+
+                for vm in doc.get("verification_method", []):
+                    public_address = vm.get("public_key_multibase")
+                    if public_address.startswith("eth:"):
+                        if public_address == f"eth:{address}":
+                            session_docs.append(docs)
+                    else:
+                        if public_address == address:
+                            session_docs.append(docs)
+            return session_docs
+        return None
 
     def issuers(self, address: str) -> List[str]:
         """
