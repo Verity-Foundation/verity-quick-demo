@@ -15,7 +15,7 @@ def test_end_to_end_create_sign_store(monkeypatch):
 
     import src.middleware.claim_utils as claim_utils
     monkeypatch.setattr(claim_utils, "sign", fake_sign)
-    claim = sign_claim(claim, "0xdeadbeef", f"{issuer}#key-1")
+    claim = sign_claim(claim, "0xdeadbeef")
 
     # Mock middleware.store via monkeypatching the underlying function used by store_claim
     fake_resp = types.SimpleNamespace(cid="fakecid123")
