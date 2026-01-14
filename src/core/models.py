@@ -4,17 +4,10 @@
 """
 from datetime import datetime
 from typing import Optional, Dict, Any, List, cast
-import inspect
-import sys
 from pydantic import BaseModel, ConfigDict, Field
 from .crypto import hexhash
 from .constants import ContentType
 
-current_module = sys.modules[__name__]
-__all__ = [
-    name for name, obj in inspect.getmembers(current_module)
-    if inspect.isclass(obj) and issubclass(obj, BaseModel)
-]
 
 # ---------- DID Registry Service Models ----------
 class DIDRegistryRegisterRequest(BaseModel):

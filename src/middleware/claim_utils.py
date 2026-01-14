@@ -23,7 +23,7 @@ def _compute_content_hash_from_bytes(data: bytes) -> str:
     h = hexhash(data)
     return f"sha256:{h}"
 
-def create_claim(issuer_did:str,message:str=None,file_path:str=None,
+def create_claim(issuer_did:str,message:Optional[str]=None,file_path:Optional[str]=None,
                  content_type:Optional[ContentType]=None) -> VerityClaim:
     """
     Create a claim based on provided data
@@ -150,7 +150,7 @@ def generate_verification_url(claim: VerityClaim, base_url: str = "http://localh
     return f"{base_url}/verify/claim/{claim_id}"
 
 def create_and_register_claim(file_path: str, issuer_did: str,
-                              issuer_private_key: str, verification_method: str = None,
+                              issuer_private_key: str, verification_method: Optional[str] = None,
                               base_url: str = "http://localhost:8000") -> Dict[str, Any]:
     """
     Complete workflow: Create claim, sign it, store it, register DID, return verification URL.

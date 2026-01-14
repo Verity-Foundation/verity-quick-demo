@@ -2,7 +2,7 @@
 Wrapper around lmdb for storage(store + index)
 """
 from collections import OrderedDict
-from typing import Union
+from typing import Optional, Union
 import lmdb as tool
 from src.core import dighash
 
@@ -74,7 +74,7 @@ class DB:
             raise DBError("Key can't be empty")
         if not value:
             raise DBError("Value can't be empty")
-        key ,value=self._encode_key_value(key, value)
+        key ,value = self._encode_key_value(key, value)
         self._cache_set(key, value)
 
         hash_key = dighash(key)
@@ -86,14 +86,15 @@ class DB:
         except Exception as e:
             raise DBError(f"Can't insert item: {key}:{value}") from e
 
-    def _encode_key_value(self,key:Union[bytes,str], value:Union[bytes,str]=None):
+    def _encode_key_value(self,key:Union[bytes,str],
+                          value:Optional[Union[bytes,str]]=None) -> tuple[bytes,Optional[bytes]]:
         if key is not None:
             if isinstance(key, str):
                 key = key.encode()
         if value is not None:
             if isinstance(value, str):
                 value = value.encode()
-        return key, value
+        return (key, value)
 
     def iterate(self, prefix: str):
         """

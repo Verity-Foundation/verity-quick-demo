@@ -75,10 +75,10 @@ class VerityDemo:
         Checks whether provided input it None or empty then raise
         
         """
-        if not data:
-            raise VerityValidationError(f"{name} cannot be empty")
         if data is None:
             raise VerityValidationError(f"{name} must not be None")
+        if not data:
+            raise VerityValidationError(f"{name} cannot be empty")
 
     def is_active(self):
         """
