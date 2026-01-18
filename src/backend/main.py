@@ -491,10 +491,8 @@ class VerityDemo:
         if not self.current_session:
             raise VerityValidationError("No account to list issuers from")
         issuers_list = []
-        if res:
-            for _, docs in enumerate(self.current_session.diddocs):
-                doc = docs.model_dump()
-                issuers_list.append(doc["id"])
+        if not res:
+            raise VerityValidationError("An account must be selected")
         diddocs = self.list_diddocs_all()
         for docs in diddocs:
             doc = docs.model_dump()
