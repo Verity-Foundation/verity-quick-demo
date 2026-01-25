@@ -6,7 +6,6 @@ import re
 from typing import Optional
 from .exceptions import VerityValidationError
 
-## Needs to be fully tested
 class DIDValidator:
     """Validates DID format and structure."""
 

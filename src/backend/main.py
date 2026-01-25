@@ -75,10 +75,10 @@ class VerityDemo:
         Checks whether provided input it None or empty then raise
         
         """
-        if not data:
-            raise VerityValidationError(f"{name} cannot be empty")
         if data is None:
             raise VerityValidationError(f"{name} must not be None")
+        if not data:
+            raise VerityValidationError(f"{name} cannot be empty")
 
     def is_active(self):
         """
@@ -491,10 +491,8 @@ class VerityDemo:
         if not self.current_session:
             raise VerityValidationError("No account to list issuers from")
         issuers_list = []
-        if res:
-            for _, docs in enumerate(self.current_session.diddocs):
-                doc = docs.model_dump()
-                issuers_list.append(doc["id"])
+        if not res:
+            raise VerityValidationError("An account must be selected")
         diddocs = self.list_diddocs_all()
         for docs in diddocs:
             doc = docs.model_dump()

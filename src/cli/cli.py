@@ -133,7 +133,7 @@ class VerityDemoCLI:
     def handle_select_account(self):
         """Select from existing accounts."""
         accounts= self.verity.list_account()
-        if not accounts:
+        if accounts[0] is None and accounts[1] is None:
             print("\n❌ No accounts exist yet. Create one first.")
             self.state = MenuState.MAIN
             return
@@ -244,7 +244,7 @@ class VerityDemoCLI:
             self.sign_diddoc(diddoc)
         self.state = MenuState.MAIN
 
-    def basic_input(self, user_input:Dict=None):
+    def basic_input(self, user_input:Optional[Dict]=None):
         """Takes Basic inputs"""
         if user_input is None:
             user_input = {}
@@ -411,6 +411,8 @@ class VerityDemoCLI:
         """Exports Priv key account to screen"""
         accs = self.verity.list_account()
         if not accs:
+            return
+        if accs[0] is None and accs[1] is None:
             return
         for i, acc in enumerate(accs[0], start=1):
             self.io.print(f"{i} - {acc}")
